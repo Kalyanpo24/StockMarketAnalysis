@@ -3,6 +3,5 @@ numpy
 pandas              
 pandas_datareader
 keras
-tensorflow-estimator==2.1.*
 alpha_vantage
 yfinance
