@@ -8,6 +8,6 @@ yfinance
 streamlit
 tensorflow==1.14
 keras==2.2.5
-tensorflow-estimator==2.1
+tensorflow-estimator==1.14
 sklearn
 
