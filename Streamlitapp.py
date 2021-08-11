@@ -1,7 +1,7 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-
+import matplotlib.pyplot as plt
 import pandas_datareader as data
 from keras.models import load_model
 from alpha_vantage.timeseries import TimeSeries
@@ -134,10 +134,10 @@ def LSTM_ALGO(df):
         
         #Getting original prices back from scaled values
         predicted_stock_price=sc.inverse_transform(predicted_stock_price)
-        #fig = plt.figure(figsize=(7.2,4.8),dpi=65)
-        #plt.plot(real_stock_price,label='Actual Price')  
-        #plt.plot(predicted_stock_price,label='Predicted Price')
-        #st.pyplot(fig)
+        fig = plt.figure(figsize=(7.2,4.8),dpi=65)
+        plt.plot(real_stock_price,label='Actual Price')  
+        plt.plot(predicted_stock_price,label='Predicted Price')
+        st.pyplot(fig)
         
         
         error_lstm = math.sqrt(mean_squared_error(real_stock_price, predicted_stock_price))
