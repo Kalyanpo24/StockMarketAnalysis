@@ -9,6 +9,8 @@ import yfinance as yf
 from datetime import datetime
 from sklearn.metrics import mean_squared_error
 import math, random
+from statsmodels.tsa.arima_model import ARIMA
+from sklearn.linear_model import LinearRegression
 def get_historical(quote):
         end = datetime.now()
         start = datetime(end.year-2,end.month,end.day)
@@ -156,6 +158,121 @@ def LSTM_ALGO(df):
         st.write("LSTM RMSE:",error_lstm)
         st.write("##############################################################################")
         return lstm_pred,error_lstm
+def ARIMA_ALGO(df):
+        uniqueVals = df["Code"].unique()  
+        len(uniqueVals)
+        df=df.set_index("Code")
+        #for daily basis
+        def parser(x):
+            return datetime.strptime(x, '%Y-%m-%d')
+        def arima_model(train, test):
+            history = [x for x in train]
+            predictions = list()
+            for t in range(len(test)):
+                model = ARIMA(history, order=(6,1 ,0))
+                model_fit = model.fit(disp=0)
+                output = model_fit.forecast()
+                yhat = output[0]
+                predictions.append(yhat[0])
+                obs = test[t]
+                history.append(obs)
+            return predictions
+        for company in uniqueVals[:10]:
+            data=(df.loc[company,:]).reset_index()
+            data['Price'] = data['Close']
+            Quantity_date = data[['Price','Date']]
+            Quantity_date.index = Quantity_date['Date'].map(lambda x: parser(x))
+            Quantity_date['Price'] = Quantity_date['Price'].map(lambda x: float(x))
+            Quantity_date = Quantity_date.fillna(Quantity_date.bfill())
+            Quantity_date = Quantity_date.drop(['Date'],axis =1)
+            fig = plt.figure(figsize=(7.2,4.8),dpi=65)
+            plt.plot(Quantity_date)
+            #plt.savefig('static/Trends.png')
+            st.pyplot(fig)
+            
+            quantity = Quantity_date.values
+            size = int(len(quantity) * 0.80)
+            train, test = quantity[0:size], quantity[size:len(quantity)]
+            #fit in model
+            predictions = arima_model(train, test)
+            
+            #plot graph
+            fig = plt.figure(figsize=(7.2,4.8),dpi=65)
+            plt.plot(test,label='Actual Price')
+            plt.plot(predictions,label='Predicted Price')
+            plt.legend(loc=4)
+            #plt.savefig('static/ARIMA.png')
+            st.pyplot(fig)
+            print()
+            st.write("##############################################################################")
+            arima_pred=predictions[-2]
+            st.write("Tomorrow's",user_input," Closing Price Prediction by ARIMA:",arima_pred)
+            #rmse calculation
+            error_arima = math.sqrt(mean_squared_error(test, predictions))
+            st.write("ARIMA RMSE:",error_arima)
+            st.write("##############################################################################")
+            return arima_pred, error_arima
+def LIN_REG_ALGO(df):
+        #No of days to be forcasted in future
+        forecast_out = int(7)
+        #Price after n days
+        df['Close after n days'] = df['Close'].shift(-forecast_out)
+        #New df with only relevant data
+        df_new=df[['Close','Close after n days']]
+
+        #Structure data for train, test & forecast
+        #lables of known data, discard last 35 rows
+        y =np.array(df_new.iloc[:-forecast_out,-1])
+        y=np.reshape(y, (-1,1))
+        #all cols of known data except lables, discard last 35 rows
+        X=np.array(df_new.iloc[:-forecast_out,0:-1])
+        #Unknown, X to be forecasted
+        X_to_be_forecasted=np.array(df_new.iloc[-forecast_out:,0:-1])
+        
+        #Traning, testing to plot graphs, check accuracy
+        X_train=X[0:int(0.8*len(df)),:]
+        X_test=X[int(0.8*len(df)):,:]
+        y_train=y[0:int(0.8*len(df)),:]
+        y_test=y[int(0.8*len(df)):,:]
+        
+        # Feature Scaling===Normalization
+        from sklearn.preprocessing import StandardScaler
+        sc = StandardScaler()
+        X_train = sc.fit_transform(X_train)
+        X_test = sc.transform(X_test)
+        
+        X_to_be_forecasted=sc.transform(X_to_be_forecasted)
+        
+        #Training
+        clf = LinearRegression(n_jobs=-1)
+        clf.fit(X_train, y_train)
+        
+        #Testing
+        y_test_pred=clf.predict(X_test)
+        y_test_pred=y_test_pred*(1.04)
+        import matplotlib.pyplot as plt2
+        fig = plt2.figure(figsize=(7.2,4.8),dpi=65)
+        plt2.plot(y_test,label='Actual Price' )
+        plt2.plot(y_test_pred,label='Predicted Price')
+        
+        plt2.legend(loc=4)
+        #plt2.savefig('static/LR.png')
+        st.pyplot(fig)
+        
+        error_lr = math.sqrt(mean_squared_error(y_test, y_test_pred))
+        
+        
+        #Forecasting
+        forecast_set = clf.predict(X_to_be_forecasted)
+        forecast_set=forecast_set*(1.04)
+        mean=forecast_set.mean()
+        lr_pred=forecast_set[0,0]
+        print()
+        st.write("##############################################################################")
+        st.write("Tomorrow's ",user_input," Closing Price Prediction by Linear Regression: ",lr_pred)
+        st.write("Linear Regression RMSE:",error_lr)
+        st.write("##############################################################################")
+        return df, lr_pred, forecast_set, mean, error_lr
 
 st.title('Stock Trend Prediction')
 user_input=st.text_input('Enter Valid Stock Symbol','')
@@ -178,5 +295,8 @@ else:
     df2 = pd.concat([df2, df], axis=1)
     df=df2
     lstm_pred, error_lstm=LSTM_ALGO(df)
+    arima_pred, error_arima=ARIMA_ALGO(df)
+    df, lr_pred, forecast_set,mean,error_lr=LIN_REG_ALGO(df)
+    st.write("Prediction prices for next 7 days",forecast_set)
     
     
