@@ -6,3 +6,4 @@ keras
 alpha_vantage
 yfinance
 streamlit
+tensorflow==1.13.2
