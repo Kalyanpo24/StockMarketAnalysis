@@ -5,4 +5,4 @@ pandas_datareader
 keras
 alpha_vantage
 yfinance
-streamlit --upgrade
+streamlit
