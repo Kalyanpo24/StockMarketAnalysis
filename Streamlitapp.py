@@ -11,7 +11,7 @@ from sklearn.metrics import mean_squared_error
 import math, random
 def get_historical(quote):
         end = datetime.now()
-        start = datetime(end.year-20,end.month,end.day)
+        start = datetime(end.year-2,end.month,end.day)
         data = yf.download(quote, start=start, end=end)
         df = pd.DataFrame(data=data)
         df.to_csv(''+quote+'.csv')
@@ -31,8 +31,8 @@ def get_historical(quote):
             df['Close']=data['4. close']
             df['Adj Close']=data['5. adjusted close']
             df['Volume']=data['6. volume']
-           
-        return df 
+            df.to_csv(''+quote+'.csv',index=False)
+        return df
 def LSTM_ALGO(df):
         #Split data into training set and test set
         dataset_train=df.iloc[0:int(0.8*len(df)),:]
@@ -160,11 +160,11 @@ def LSTM_ALGO(df):
 st.title('Stock Trend Prediction')
 user_input=st.text_input('Enter Valid Stock Symbol','')
 try:
-    df=get_historical(user_input)
+     get_historical(user_input)
 except:
     st.write("Data Haven't found Please enter correct symbol")
 else:
-    
+    df = pd.read_csv(''+user_input+'.csv')
     st.write("##############################################################################")
     st.write("Today's",user_input,"Stock Data: ")
     today_stock=df.iloc[-1:]
