@@ -6,7 +6,3 @@ keras
 tensorflow
 alpha_vantage
 yfinance
-datetime
-
-math
-random
