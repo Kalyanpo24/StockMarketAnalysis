@@ -6,7 +6,7 @@ keras
 alpha_vantage
 yfinance
 streamlit
-tensorflow==2.1
+tensorflow==1.4
 keras==2.2.5
 tensorflow-estimator==2.1
 sklearn
