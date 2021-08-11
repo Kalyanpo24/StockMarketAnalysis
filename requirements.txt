@@ -7,6 +7,6 @@ tensorflow
 alpha_vantage
 yfinance
 datetime
-sklearn
+
 math
 random
