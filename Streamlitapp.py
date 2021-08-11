@@ -31,7 +31,7 @@ def get_historical(quote):
             df['Close']=data['4. close']
             df['Adj Close']=data['5. adjusted close']
             df['Volume']=data['6. volume']
-            df.to_csv(''+quote+'.csv',index=False)
+            df.to_csv('Kalyanpo24/StockmarketAnalysis/'+quote+'.csv',index=False)
         return 
 def LSTM_ALGO(df):
         #Split data into training set and test set
@@ -164,7 +164,7 @@ try:
 except:
     st.write("Data Haven't found Please enter correct symbol")
 else:
-    df = pd.read_csv(''+user_input+'.csv')
+    df = pd.read_csv('Kalyanpo24/StockmarketAnalysis/'+user_input+'.csv')
     st.write("##############################################################################")
     st.write("Today's",user_input,"Stock Data: ")
     today_stock=df.iloc[-1:]
