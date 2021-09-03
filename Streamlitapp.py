@@ -9,7 +9,7 @@ from sklearn.metrics import mean_squared_error
 from statsmodels.tsa.arima_model import ARIMA
 from sklearn.linear_model import LinearRegression
 import tweepy
-import Tweet
+import tweepy as Tweet
 import preprocessor as p
 from textblob import TextBlob
 import regex as re
