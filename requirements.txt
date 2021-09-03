@@ -15,4 +15,4 @@ tweepy
 preprocessor
 textblob
 regex
-maths
+python-math
