@@ -12,7 +12,7 @@ import tweepy
 from Tweet import Tweet
 import preprocessor as p
 from textblob import TextBlob
-import re
+import regex as re
 import math
 
 def get_historical(quote):
