@@ -14,5 +14,5 @@ statsmodels
 tweepy
 preprocessor
 textblob
-re
+regex
 math
