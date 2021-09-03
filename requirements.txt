@@ -16,3 +16,4 @@ preprocessor
 textblob
 regex
 python-math
+Tweet
