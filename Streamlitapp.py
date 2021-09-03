@@ -2,18 +2,22 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import pandas_datareader as data
-from keras.models import load_model
 from alpha_vantage.timeseries import TimeSeries
 import yfinance as yf
 from datetime import datetime
 from sklearn.metrics import mean_squared_error
-import math, random
 from statsmodels.tsa.arima_model import ARIMA
 from sklearn.linear_model import LinearRegression
+import tweepy
+from Tweet import Tweet
+import preprocessor as p
+from textblob import TextBlob
+import re
+import math
+
 def get_historical(quote):
         end = datetime.now()
-        start = datetime(end.year-2,end.month,end.day)
+        start = datetime(end.year-20,end.month,end.day)
         data = yf.download(quote, start=start, end=end)
         df = pd.DataFrame(data=data)
         df.to_csv(''+quote+'.csv')
@@ -22,7 +26,7 @@ def get_historical(quote):
             data, meta_data = ts.get_daily_adjusted(symbol='NSE:'+quote, outputsize='full')
             #Format df
             #Last 2 yrs rows => 502, in ascending order => ::-1
-            data=data.head(503).iloc[::-1]
+            data=data.head(5030).iloc[::-1]
             data=data.reset_index()
             #Keep Required cols only
             df=pd.DataFrame()
@@ -36,128 +40,93 @@ def get_historical(quote):
             df.to_csv(''+quote+'.csv',index=False)
         return df
 def LSTM_ALGO(df):
-        #Split data into training set and test set
-        dataset_train=df.iloc[0:int(0.8*len(df)),:]
-        dataset_test=df.iloc[int(0.8*len(df)):,:]
-        ############# NOTE #################
-        #TO PREDICT STOCK PRICES OF NEXT N DAYS, STORE PREVIOUS N DAYS IN MEMORY WHILE TRAINING
-        # HERE N=7
-        ###dataset_train=pd.read_csv('Google_Stock_Price_Train.csv')
-        training_set=df.iloc[:,4:5].values# 1:2, to store as numpy array else Series obj will be stored
-        #select cols using above manner to select as float64 type, view in var explorer
-
-        #Feature Scaling
+        fig = plt.figure(figsize=(7.2,4.8),dpi=65)
+        plt.plot(df['Date'],df['Close'],c = 'r')
+        plt.xlabel('Date')
+        plt.ylabel('Close Price')
+        plt.legend('Close',loc = 'upper right')
+        st.pyplot(fig)
+        FullData=df[['Close']].values
+        st.write('Original Prices')
+        st.write(FullData[-30:])
         from sklearn.preprocessing import MinMaxScaler
-        sc=MinMaxScaler(feature_range=(0,1))#Scaled values btween 0,1
-        training_set_scaled=sc.fit_transform(training_set)
-        #In scaling, fit_transform for training, transform for test
-        
-        #Creating data stucture with 7 timesteps and 1 output. 
-        #7 timesteps meaning storing trends from 7 days before current day to predict 1 next output
-        X_train=[]#memory with 7 days from day i
-        y_train=[]#day i
-        for i in range(7,len(training_set_scaled)):
-            X_train.append(training_set_scaled[i-7:i,0])
-            y_train.append(training_set_scaled[i,0])
-        #Convert list to numpy arrays
-        X_train=np.array(X_train)
-        y_train=np.array(y_train)
-        X_forecast=np.array(X_train[-1,1:])
-        X_forecast=np.append(X_forecast,y_train[-1])
-        #Reshaping: Adding 3rd dimension
-        X_train=np.reshape(X_train, (X_train.shape[0],X_train.shape[1],1))#.shape 0=row,1=col
-        X_forecast=np.reshape(X_forecast, (1,X_forecast.shape[0],1))
-        #For X_train=np.reshape(no. of rows/samples, timesteps, no. of cols/features)
-        
-        #Building RNN
+        sc=MinMaxScaler()
+ 
+        DataScaler = sc.fit(FullData)
+        X=DataScaler.transform(FullData)
+ 
+        # Printing last 10 values of the scaled data which we have created above for the last model
+        # Here I am changing the shape of the data to one dimensional array because
+        # for Multi step data preparation we need to X input in this fashion
+        X=X.reshape(X.shape[0],)
+        X_samples = list()
+        y_samples = list()
+        NumerOfRows = len(X)
+        TimeSteps=30  # next few day's Price Prediction is based on last how many past day's prices
+        FutureTimeSteps=7 # How many days in future you want to predict the prices
+        # Iterate thru the values to create combinations
+        for i in range(TimeSteps , NumerOfRows-FutureTimeSteps , 1):
+            x_sample = X[i-TimeSteps:i]
+            y_sample = X[i:i+FutureTimeSteps]
+            X_samples.append(x_sample)
+            y_samples.append(y_sample)
+        X_data=np.array(X_samples)
+        X_data=X_data.reshape(X_data.shape[0],X_data.shape[1], 1)
+        y_data=np.array(y_samples)
+        TestingRecords=5
+        X_train=X_data[:-TestingRecords]
+        X_test=X_data[-TestingRecords:]
+        y_train=y_data[:-TestingRecords]
+        y_test=y_data[-TestingRecords:] 
+        TimeSteps=X_train.shape[1]
+        TotalFeatures=X_train.shape[2]
         from keras.models import Sequential
         from keras.layers import Dense
-        from keras.layers import Dropout
         from keras.layers import LSTM
-        
-        #Initialise RNN
-        regressor=Sequential()
-        
-        #Add first LSTM layer
-        regressor.add(LSTM(units=50,return_sequences=True,input_shape=(X_train.shape[1],1)))
-        #units=no. of neurons in layer
-        #input_shape=(timesteps,no. of cols/features)
-        #return_seq=True for sending recc memory. For last layer, retrun_seq=False since end of the line
-        regressor.add(Dropout(0.1))
-        
-        #Add 2nd LSTM layer
-        regressor.add(LSTM(units=50,return_sequences=True))
-        regressor.add(Dropout(0.1))
-        
-        #Add 3rd LSTM layer
-        regressor.add(LSTM(units=50,return_sequences=True))
-        regressor.add(Dropout(0.1))
-        
-        #Add 4th LSTM layer
-        regressor.add(LSTM(units=50))
-        regressor.add(Dropout(0.1))
-        
-        #Add o/p layer
-        regressor.add(Dense(units=1))
-        
-        #Compile
-        regressor.compile(optimizer='adam',loss='mean_squared_error')
-        
-        #Training
-        regressor.fit(X_train,y_train,epochs=25,batch_size=32 )
-        #For lstm, batch_size=power of 2
-        
-        #Testing
-        ###dataset_test=pd.read_csv('Google_Stock_Price_Test.csv')
-        real_stock_price=dataset_test.iloc[:,4:5].values
-        
-        #To predict, we need stock prices of 7 days before the test set
-        #So combine train and test set to get the entire data set
-        dataset_total=pd.concat((dataset_train['Close'],dataset_test['Close']),axis=0) 
-        testing_set=dataset_total[ len(dataset_total) -len(dataset_test) -7: ].values
-        testing_set=testing_set.reshape(-1,1)
-        #-1=till last row, (-1,1)=>(80,1). otherwise only (80,0)
-        
-        #Feature scaling
-        testing_set=sc.transform(testing_set)
-        
-        #Create data structure
-        X_test=[]
-        for i in range(7,len(testing_set)):
-            X_test.append(testing_set[i-7:i,0])
-            #Convert list to numpy arrays
-        X_test=np.array(X_test)
-        
-        #Reshaping: Adding 3rd dimension
-        X_test=np.reshape(X_test, (X_test.shape[0],X_test.shape[1],1))
-        
-        #Testing Prediction
-        predicted_stock_price=regressor.predict(X_test)
-        
-        #Getting original prices back from scaled values
-        predicted_stock_price=sc.inverse_transform(predicted_stock_price)
+        regressor = Sequential()
+        regressor.add(LSTM(units = 20, activation = 'relu', input_shape = (TimeSteps, TotalFeatures), return_sequences=True))
+        regressor.add(LSTM(units = 10, activation = 'relu', input_shape = (TimeSteps, TotalFeatures), return_sequences=True))
+        regressor.add(LSTM(units = 10, activation = 'relu', return_sequences=False ))
+        regressor.add(Dense(units = FutureTimeSteps))
+        regressor.compile(optimizer = 'adam', loss = 'mean_squared_error')
+        import time
+        StartTime=time.time()
+        regressor.fit(X_train, y_train, batch_size = 7, epochs = 30)
+ 
+        EndTime=time.time()
+        st.write("############### Total Time Taken: ", round((EndTime-StartTime)/60), 'Minutes #############')
+        predicted_Price = regressor.predict(X_test)
+        predicted_Price = DataScaler.inverse_transform(predicted_Price)
+        st.write('#### Predicted Prices ####')
+        st.write(predicted_Price)
+         
+        # Getting the original price values for testing data
+        orig=y_test
+        orig=DataScaler.inverse_transform(y_test)
+        st.write('\n#### Original Prices ####')
+        st.write(orig)
         fig = plt.figure(figsize=(7.2,4.8),dpi=65)
-        plt.plot(real_stock_price,label='Actual Price')  
-        plt.plot(predicted_stock_price,label='Predicted Price')
+        plt.plot(orig,c = 'r')
+        plt.plot(predicted_Price,c = 'g')
+        plt.xlabel('Date')
+        plt.ylabel('Close Price')
+        plt.title('### Accuracy of the predictions:'+ str(100 - (100*(abs(orig-predicted_Price)/orig)).mean().round(2))+'% ###')
+        plt.legend(['Orig','Predict'],loc = 'lower right')
         st.pyplot(fig)
+        st.write("Based on these last 30 Closing Prices", FullData[-30:])
+        Last30DaysPrices=FullData[-30:]
+        Last30DaysPrices=Last30DaysPrices.reshape(-1, 1)
+        X_test=DataScaler.transform(Last30DaysPrices)
+        NumberofSamples=1
+        TimeSteps=X_test.shape[0]
+        NumberofFeatures=X_test.shape[1]
         
-        
-        error_lstm = math.sqrt(mean_squared_error(real_stock_price, predicted_stock_price))
-        
-        
-        #Forecasting Prediction
-        forecasted_stock_price=regressor.predict(X_forecast)
-        
-        #Getting original prices back from scaled values
-        forecasted_stock_price=sc.inverse_transform(forecasted_stock_price)
-        
-        lstm_pred=forecasted_stock_price[0,0]
-        print()
-        st.write("##############################################################################")
-        st.write("Tomorrow's ",user_input," Closing Price Prediction by LSTM: ",lstm_pred)
+        X_test=X_test.reshape(NumberofSamples,TimeSteps,NumberofFeatures)
+        Next7DaysPrice = regressor.predict(X_test)
+        Next7DaysPrice = DataScaler.inverse_transform(Next7DaysPrice)
+        st.write("Next 7 Days Price",Next7DaysPrice)
+        error_lstm = math.sqrt(mean_squared_error(orig, predicted_Price))
         st.write("LSTM RMSE:",error_lstm)
-        st.write("##############################################################################")
-        return lstm_pred,error_lstm
 def ARIMA_ALGO(df):
         uniqueVals = df["Code"].unique()  
         len(uniqueVals)
@@ -200,6 +169,7 @@ def ARIMA_ALGO(df):
             fig = plt.figure(figsize=(7.2,4.8),dpi=65)
             plt.plot(test,label='Actual Price')
             plt.plot(predictions,label='Predicted Price')
+            plt.title('Stock Prediction Graph using ARIMA model')
             plt.legend(loc=4)
             #plt.savefig('static/ARIMA.png')
             st.pyplot(fig)
@@ -254,7 +224,7 @@ def LIN_REG_ALGO(df):
         fig = plt2.figure(figsize=(7.2,4.8),dpi=65)
         plt2.plot(y_test,label='Actual Price' )
         plt2.plot(y_test_pred,label='Predicted Price')
-        
+        plt2.title('Stock Prediction Graph using Linear Regression model')
         plt2.legend(loc=4)
         #plt2.savefig('static/LR.png')
         st.pyplot(fig)
@@ -273,8 +243,127 @@ def LIN_REG_ALGO(df):
         st.write("Linear Regression RMSE:",error_lr)
         st.write("##############################################################################")
         return df, lr_pred, forecast_set, mean, error_lr
+def retrieving_tweets_polarity(symbol):
+        num_of_tweets = 200
+        
+        #companies = pd.read_csv(io.StringIO(s.decode('utf-8')))
+        #symbols = companies['Name'].tolist()                                    
+        stock_ticker_map = pd.read_csv('https://raw.githubusercontent.com/Kalyanpo24/StockMarketAnalysis/main/Yahoo-Finance-Ticker-Symbols.csv')
+        stock_full_form = stock_ticker_map[stock_ticker_map['Ticker']==symbol]
+        symbol = stock_full_form['Name'].to_list()[0][0:]
 
+        auth = tweepy.OAuthHandler('7x7w8Ti8GmMtuhvj7IXBuvZmP', 'kpFGcKiGxP9dJtlQzZ99p2OK9HM0IjA1I8n23N40VJyctOzvkG')
+        auth.set_access_token('1365544389498474497-97lzyZE9lroLNDzLhvW1dLS3MDKfV5', '8mF9CrBt4SvmewPZaapgL7kkh2iJus824SvhBJOvDpXlw')
+        user = tweepy.API(auth)
+        
+        tweets = tweepy.Cursor(user.search, q=symbol, tweet_mode='extended', lang='en',exclude_replies=True).items(num_of_tweets)
+        
+        tweet_list = [] #List of tweets alongside polarity
+        global_polarity = 0 #Polarity of all tweets === Sum of polarities of individual tweets
+        tw_list=[] #List of tweets only => to be displayed on web page
+        #Count Positive, Negative to plot pie chart
+        pos=0 #Num of pos tweets
+        neg=1 #Num of negative tweets
+        for tweet in tweets:
+            count=20 #Num of tweets to be displayed on web page
+            #Convert to Textblob format for assigning polarity
+            tw2 = tweet.full_text
+            tw = tweet.full_text
+            #Clean
+            tw=p.clean(tw)
+            #print("-------------------------------CLEANED TWEET-----------------------------")
+            #print(tw)
+            #Replace &amp; by &
+            tw=re.sub('&amp;','&',tw)
+            #Remove :
+            tw=re.sub(':','',tw)
+            #print("-------------------------------TWEET AFTER REGEX MATCHING-----------------------------")
+            #print(tw)
+            #Remove Emojis and Hindi Characters
+            tw=tw.encode('ascii', 'ignore').decode('ascii')
+
+            #print("-------------------------------TWEET AFTER REMOVING NON ASCII CHARS-----------------------------")
+            #print(tw)
+            blob = TextBlob(tw)
+            polarity = 0 #Polarity of single individual tweet
+            for sentence in blob.sentences:
+                   
+                polarity += sentence.sentiment.polarity
+                if polarity>0:
+                    pos=pos+1
+                if polarity<0:
+                    neg=neg+1
+                
+                global_polarity += sentence.sentiment.polarity
+            if count > 0:
+                tw_list.append(tw2)
+                
+            tweet_list.append(Tweet(tw, polarity))
+            count=count-1
+        if len(tweet_list) != 0:
+            global_polarity = global_polarity / len(tweet_list)
+        else:
+            global_polarity = global_polarity
+        neutral=num_of_tweets-pos-neg
+        if neutral<0:
+        	neg=neg+neutral
+        	neutral=20
+        print()
+        st.write("##############################################################################")
+        st.write("Positive Tweets :",pos,"Negative Tweets :",neg,"Neutral Tweets :",neutral)
+        st.write("##############################################################################")
+        labels=['Positive','Negative','Neutral']
+        sizes = [pos,neg,neutral]
+        explode = (0, 0, 0)
+        fig1 = plt.figure(figsize=(7.2,4.8),dpi=65)
+        plt.title('Sentimet Analysis based on tweets')
+        fig1, ax1 = plt.subplots(figsize=(7.2,4.8),dpi=65)
+        ax1.pie(sizes, explode=explode, labels=labels, autopct='%1.1f%%', startangle=90)
+        # Equal aspect ratio ensures that pie is drawn as a circle
+        ax1.axis('equal')  
+        plt.tight_layout()
+        #plt.savefig('static/SA.png')
+        #plt.close(fig)
+        #plt.show()
+        st.write(fig1)
+        if global_polarity>0:
+            st.write()
+            st.write("##############################################################################")
+            st.write("Tweets Polarity: Overall Positive")
+            st.write("##############################################################################")
+            tw_pol="Overall Positive"
+        else:
+            st.write()
+            st.write("##############################################################################")
+            st.write("Tweets Polarity: Overall Negative")
+            st.write("##############################################################################")
+            tw_pol="Overall Negative"
+        return global_polarity,tw_list,tw_pol,pos,neg,neutral
+
+def recommending(df, global_polarity,today_stock,mean):
+        if today_stock.iloc[-1]['Close'] < mean:
+            if global_polarity > 0:
+                idea="RISE"
+                decision="BUY"
+                st.write()
+                st.write("##############################################################################")
+                st.write("According to the ML Predictions and Sentiment Analysis of Tweets, a",idea,"in",user_input,"stock is expected => ",decision)
+            elif global_polarity <= 0:
+                idea="FALL"
+                decision="SELL"
+                st.write()
+                st.write("##############################################################################")
+                st.write("According to the ML Predictions and Sentiment Analysis of Tweets, a",idea,"in",user_input,"stock is expected => ",decision)
+        else:
+            idea="FALL"
+            decision="SELL"
+            st.write()
+            st.write("##############################################################################")
+            st.write("According to the ML Predictions and Sentiment Analysis of Tweets, a",idea,"in",user_input,"stock is expected => ",decision)
+        return idea, decision
 st.title('Stock Trend Prediction')
+st.markdown("The dashboard will help a researcher to get to know \
+more about the given datasets and it's output")
 user_input=st.text_input('Enter Valid Stock Symbol','')
 try:
      get_historical(user_input)
@@ -294,9 +383,10 @@ else:
     df2=pd.DataFrame(code_list,columns=['Code'])
     df2 = pd.concat([df2, df], axis=1)
     df=df2
-    lstm_pred, error_lstm=LSTM_ALGO(df)
+    LSTM_ALGO(df)
     arima_pred, error_arima=ARIMA_ALGO(df)
     df, lr_pred, forecast_set,mean,error_lr=LIN_REG_ALGO(df)
     st.write("Prediction prices for next 7 days",forecast_set)
-    
-    
+    polarity,tw_list,tw_pol,pos,neg,neutral = retrieving_tweets_polarity(user_input)
+    idea, decision=recommending(df, polarity,today_stock,mean)
+    st.write("Please find some of tweets",tw_list)
