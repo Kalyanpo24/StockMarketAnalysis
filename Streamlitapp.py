@@ -13,7 +13,7 @@ from Tweet import Tweet
 import preprocessor as p
 from textblob import TextBlob
 import regex as re
-import maths as math
+import python-math as math
 
 def get_historical(quote):
         end = datetime.now()
