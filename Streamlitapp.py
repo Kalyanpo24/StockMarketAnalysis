@@ -11,7 +11,7 @@ from sklearn.linear_model import LinearRegression
 import math
 import tweepy
 import tweepy as Tweet
-import preprocessor as p
+import tweet-preprocessor as p
 from textblob import TextBlob
 import regex as re
 def get_historical(quote):
