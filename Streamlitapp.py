@@ -10,7 +10,7 @@ from statsmodels.tsa.arima_model import ARIMA
 from sklearn.linear_model import LinearRegression
 import tweepy
 import tweepy as Tweet
-import preprocessor as p
+import tweet-preprocessor as p
 from textblob import TextBlob
 import regex as re
 import math
@@ -44,7 +44,7 @@ def LSTM_ALGO(df):
         plt.plot(df['Date'],df['Close'],c = 'r')
         plt.xlabel('Date')
         plt.ylabel('Close Price')
-        plt.legend('Close',loc = 'upper right')
+        plt.legend('Close',loc = 'lower right')
         st.pyplot(fig)
         FullData=df[['Close']].values
         st.write('Original Prices')
