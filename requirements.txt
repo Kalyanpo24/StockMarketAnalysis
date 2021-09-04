@@ -12,7 +12,7 @@ tensorflow-estimator==1.14
 sklearn
 statsmodels
 tweepy
-preprocessor
+tweet-preprocessor
 textblob
 regex
 python-math
