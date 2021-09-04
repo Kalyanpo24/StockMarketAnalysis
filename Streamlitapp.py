@@ -10,7 +10,6 @@ from statsmodels.tsa.arima_model import ARIMA
 from sklearn.linear_model import LinearRegression
 import math
 import tweepy
-import tweepy as Tweet
 import preprocessor as p
 from textblob import TextBlob
 import regex as re
@@ -302,7 +301,7 @@ def retrieving_tweets_polarity(symbol):
             if count > 0:
                 tw_list.append(tw2)
                 
-            tweet_list.append(Tweet(tw, polarity))
+            tweet_list.append((tw, polarity))
             count=count-1
         if len(tweet_list) != 0:
             global_polarity = global_polarity / len(tweet_list)
