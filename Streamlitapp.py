@@ -14,7 +14,9 @@ import preprocessor as p
 from textblob import TextBlob
 import regex as re
 import nltk
-nltk.download('vader_lexicon')
+nltk.download('averaged_perceptron_tagger')
+nltk.download('punkt')
+nltk.download('wordnet')
 def get_historical(quote):
         end = datetime.now()
         start = datetime(end.year-20,end.month,end.day)
