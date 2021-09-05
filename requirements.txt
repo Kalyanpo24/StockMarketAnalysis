@@ -16,3 +16,4 @@ tweet-preprocessor
 textblob
 regex
 python-math
+nltk
