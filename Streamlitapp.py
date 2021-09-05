@@ -13,6 +13,8 @@ import tweepy
 import preprocessor as p
 from textblob import TextBlob
 import regex as re
+import nltk
+nltk.download('vader_lexicon')
 def get_historical(quote):
         end = datetime.now()
         start = datetime(end.year-20,end.month,end.day)
