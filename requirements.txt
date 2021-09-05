@@ -13,8 +13,8 @@ sklearn
 statsmodels
 tweepy
 tweet-preprocessor
-textblob
+textblob==0.8.1
 regex
 python-math
 nltk
-python -m textblob.download_corpora
+
