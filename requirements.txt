@@ -17,4 +17,3 @@ textblob
 regex
 python-math
 nltk
-textblob.download_corpora
