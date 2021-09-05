@@ -13,10 +13,6 @@ import tweepy
 import preprocessor as p
 from textblob import TextBlob
 import regex as re
-import nltk
-nltk.download('averaged_perceptron_tagger')
-nltk.download('punkt')
-nltk.download('wordnet')
 def get_historical(quote):
         end = datetime.now()
         start = datetime(end.year-20,end.month,end.day)
@@ -42,30 +38,25 @@ def get_historical(quote):
             df.to_csv(''+quote+'.csv',index=False)
         return df
 def LSTM_ALGO(df):
-        """
         fig = plt.figure(figsize=(7.2,4.8),dpi=65)
         plt.plot(df['Date'],df['Close'],c = 'r')
         plt.xlabel('Date')
         plt.ylabel('Close Price')
         plt.legend('Close',loc = 'upper right')
         st.pyplot(fig)
-        """
         FullData=df[['Close']].values
         st.write('Original Prices')
-        st.write(FullData[-10:])
+        st.write(FullData[-30:])
         from sklearn.preprocessing import MinMaxScaler
         sc=MinMaxScaler()
  
         DataScaler = sc.fit(FullData)
         X=DataScaler.transform(FullData)
-        st.write('###################')
  
         # Printing last 10 values of the scaled data which we have created above for the last model
         # Here I am changing the shape of the data to one dimensional array because
         # for Multi step data preparation we need to X input in this fashion
         X=X.reshape(X.shape[0],)
-        st.write('Scaled Prices')
-        st.write(X[-10:])
         X_samples = list()
         y_samples = list()
         NumerOfRows = len(X)
@@ -120,7 +111,7 @@ def LSTM_ALGO(df):
         plt.title('### Accuracy of the predictions:'+ str(100 - (100*(abs(orig-predicted_Price)/orig)).mean().round(2))+'% ###')
         plt.legend(['Orig','Predict'],loc = 'lower right')
         st.pyplot(fig)
-        st.write(FullData[-30:])
+        st.write("Based on these last 30 Closing Prices", FullData[-30:])
         Last30DaysPrices=FullData[-30:]
         Last30DaysPrices=Last30DaysPrices.reshape(-1, 1)
         X_test=DataScaler.transform(Last30DaysPrices)
@@ -131,8 +122,9 @@ def LSTM_ALGO(df):
         X_test=X_test.reshape(NumberofSamples,TimeSteps,NumberofFeatures)
         Next7DaysPrice = regressor.predict(X_test)
         Next7DaysPrice = DataScaler.inverse_transform(Next7DaysPrice)
-        st.write(Next7DaysPrice)
-
+        st.write("Next 7 Days Price",Next7DaysPrice)
+        error_lstm = math.sqrt(mean_squared_error(orig, predicted_Price))
+        st.write("LSTM RMSE:",error_lstm)
 
 def ARIMA_ALGO(df):
         uniqueVals = df["Code"].unique()  
