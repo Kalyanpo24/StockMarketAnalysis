@@ -364,11 +364,11 @@ def recommending(df, global_polarity,today_stock,mean):
             st.write("According to the ML Predictions and Sentiment Analysis of Tweets, a",idea,"in",user_input,"stock is expected => ",decision)
         return idea, decision
 st.title('Stock Trend Prediction')
-st.markdown("The dashboard will help a Trader to analyse the Stock Movement and future predicted values. 
-            Important Points to be considered before going to use
-            1. Enter the National Stock Symbol with .NS for Eg:- WIPRO.NS
-            2. It will atuomatically download nearly 20 years of data from latest share price for Analysis
-            3. It will provide Stock movement Graphs and Original as well as Predicted Values in next probably 45 min  
+st.markdown("The dashboard will help a Trader to analyse the Stock Movement and future predicted values. \
+            Important Points to be considered before going to use \
+            1. Enter the National Stock Symbol with .NS for Eg:- WIPRO.NS \
+            2. It will atuomatically download nearly 20 years of data from latest share price for Analysis\
+            3. It will provide Stock movement Graphs and Original as well as Predicted Values in next probably 45 min \ 
             4. Tis site is for just study purpose invest @your own risk")
 user_input=st.text_input('Enter Valid Stock Symbol with .NS must','')
 try:
