@@ -46,12 +46,7 @@ def get_historical(quote):
             df.to_csv(''+quote+'.csv',index=False)
         return df
 def LSTM_ALGO(df):
-        fig = plt.figure(figsize=(7.2,4.8),dpi=65)
-        plt.plot(df['Date'],df['Close'],c = 'r')
-        plt.xlabel('Date')
-        plt.ylabel('Close Price')
-        plt.legend('Close',loc = 'upper right')
-        st.pyplot(fig)
+        
         FullData=df[['Close']].values
         st.write('Original Prices')
         st.write(FullData[-30:])
@@ -61,7 +56,7 @@ def LSTM_ALGO(df):
         DataScaler = sc.fit(FullData)
         X=DataScaler.transform(FullData)
  
-        # Printing last 10 values of the scaled data which we have created above for the last model
+        # Printing last 30 values of the scaled data 
         # Here I am changing the shape of the data to one dimensional array because
         # for Multi step data preparation we need to X input in this fashion
         X=X.reshape(X.shape[0],)
@@ -79,7 +74,7 @@ def LSTM_ALGO(df):
         X_data=np.array(X_samples)
         X_data=X_data.reshape(X_data.shape[0],X_data.shape[1], 1)
         y_data=np.array(y_samples)
-        TestingRecords=5
+        TestingRecords=7
         X_train=X_data[:-TestingRecords]
         X_test=X_data[-TestingRecords:]
         y_train=y_data[:-TestingRecords]
@@ -369,9 +364,13 @@ def recommending(df, global_polarity,today_stock,mean):
             st.write("According to the ML Predictions and Sentiment Analysis of Tweets, a",idea,"in",user_input,"stock is expected => ",decision)
         return idea, decision
 st.title('Stock Trend Prediction')
-st.markdown("The dashboard will help a researcher to get to know \
-more about the given datasets and it's output")
-user_input=st.text_input('Enter Valid Stock Symbol','')
+st.markdown("The dashboard will help a Trader to analyse the Stock Movement and future predicted values. 
+            Important Points to be considered before going to use
+            1. Enter the National Stock Symbol with .NS for Eg:- WIPRO.NS
+            2. It will atuomatically download nearly 20 years of data from latest share price for Analysis
+            3. It will provide Stock movement Graphs and Original as well as Predicted Values in next probably 45 min  
+            4. Tis site is for just study purpose invest @your own risk")
+user_input=st.text_input('Enter Valid Stock Symbol with .NS must','')
 try:
      get_historical(user_input)
 except:
