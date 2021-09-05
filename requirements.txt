@@ -13,7 +13,7 @@ sklearn
 statsmodels
 tweepy
 tweet-preprocessor
-textblob==0.8.1
+textblob
 regex
 python-math
 nltk
